@@ -1,0 +1,14 @@
+# .github/workflows/link-check.yml
+name: Checar Links
+
+on: [push]
+
+jobs:
+  linkChecker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Verificar links
+        uses: lycheeverse/lychee-action@v1.6.1
+        with:
+          args: --verbose *.html

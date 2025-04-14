@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boletim de Alunos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.4/css/bulma.min.css">
+    <style>
+        header {
+            text-align: center;
+        } 
+    </style>
+</head> 
+<body>
+    <header> 
+        <h1 class="title mt-4 mb-4">Alunos IFSP</h1>
+    </header>
+    <div class="columns">
+        <div class="column is-8 is-offset-2">
+            <div class="field">
+                <label class="label">Nome</label>
+                <div class="control">
+                    <input type="text" placeholder="Digite o nome do aluno" class="input" name="nome">
+                </div>
+            </div>
+            <div class="buttons is-centered">
+                <button class="button is-primary" id="adicionar-aluno">Adicionar aluno</button>
+                <button class="button is-danger" id="remover-pior-aluno">Remover pior aluno</button>
+            </div>
+            <table class="table is-striped is-fullwidth is-hoverable">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Nota 1</th>
+                        <th>Nota 2</th>
+                        <th>Nota 3</th>
+                        <th>Média</th>
+                        <th>Status</th>
+                        <th>Opções</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        function obterTodosAlunos() {
+            fetch('https://ifsp.ddns.net/webservices/boletim/aluno')
+                .then(response => response.json())
+                .then(data => {
+                    atualizarTabelaAlunos(data);
+                })
+                .catch(error => console.error('Erro ao obter alunos:', error));
+        }
+        function adicionarAluno(nome) {
+            fetch('https://ifsp.ddns.net/webservices/boletim/aluno', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `nome=${nome}`,
+            })
+                .then(response => response.json())
+                .then(data => {
+                    obterTodosAlunos();
+                })
+                .catch(error => console.error('Erro ao adicionar aluno:', error));
+        }
+        function atualizarNota(id, operacao) {
+            fetch(`https://ifsp.ddns.net/webservices/boletim/aluno/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `op=${operacao}`,
+            })
+                .then(response => response.json())
+                .then(data => {
+                    obterTodosAlunos();
+                })
+                .catch(error => console.error('Erro ao atualizar nota:', error));
+        }
+        function removerAluno(id) {
+            fetch(`https://ifsp.ddns.net/webservices/boletim/aluno/${id}`, {
+                method: 'DELETE',
+            })
+                .then(response => response.json())
+                .then(data => {
+                    obterTodosAlunos();
+                })
+                .catch(error => console.error('Erro ao remover aluno:', error));
+        }
+        function removerPiorAluno() {
+            fetch('https://ifsp.ddns.net/webservices/boletim/aluno')
+                .then(response => response.json())
+                .then(data => {
+                    const piorAluno = data.reduce((pior, aluno) => (aluno.media < pior.media ? aluno : pior), data[0]);
+                    removerAluno(piorAluno.id);
+                })
+                .catch(error => console.error('Erro ao obter alunos:', error));
+        }
+        function atualizarTabelaAlunos(data) {
+            const tbody = document.querySelector('tbody');
+            tbody.innerHTML = '';
+            data.forEach(aluno => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${aluno.nome}</td>
+                    <td>${aluno.nota1.toFixed(1)}</td>
+                    <td>${aluno.nota2.toFixed(1)}</td>
+                    <td>${aluno.nota3.toFixed(1)}</td>
+                    <td>${aluno.media.toFixed(2)}</td>
+                    <td>${aluno.status}</td>
+                    <td>
+                        <button class="button is-primary plus" data-id="${aluno.id}">Aumentar nota</button>
+                        <button class="button is-info minus" data-id="${aluno.id}">Diminuir nota</button>
+                        <button class="button is-warning rem" data-id="${aluno.id}">Remover</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            document.querySelectorAll('.plus').forEach(button => {
+                button.addEventListener('click', function () {
+                    const id = this.getAttribute('data-id');
+                    atualizarNota(id, 'plus');
+                });
+            });
+
+            document.querySelectorAll('.minus').forEach(button => {
+                button.addEventListener('click', function () {
+                    const id = this.getAttribute('data-id');
+                    atualizarNota(id, 'minus');
+                });
+            });
+
+            document.querySelectorAll('.rem').forEach(button => {
+                button.addEventListener('click', function () {
+                    const id = this.getAttribute('data-id');
+                    removerAluno(id);
+                });
+            });
+        }
+        document.getElementById('adicionar-aluno').addEventListener('click', function () {
+            const nomeInput = document.querySelector('input[name="nome"]');
+            const nome = nomeInput.value.trim();
+            if (nome === '') {
+                alert('Digite o nome do aluno');
+                return;
+            }
+            adicionarAluno(nome);
+            nomeInput.value = '';
+        });
+        document.getElementById('remover-pior-aluno').addEventListener('click', function () {
+            removerPiorAluno();
+        });
+        obterTodosAlunos();
+    </script>
+</body>
+</html>

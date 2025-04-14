@@ -1,0 +1,35 @@
+name: Aluno do Mês
+
+on:
+  push:
+
+jobs:
+  aluno-top:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar API e comentar no commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Instala o jq
+          sudo apt-get update && sudo apt-get install -y jq
+
+          # Chama a API e guarda o aluno com maior média
+          top_aluno=$(curl -s https://ifsp.ddns.net/webservices/boletim/aluno | jq -r '
+            max_by(.media) as $melhor |
+            "🏆 Aluno do mês: \($melhor.nome) — Média: \($melhor.media)"')
+
+          echo "$top_aluno"
+
+          # Clona o repositório com autenticação
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git clone https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git repo
+          cd repo
+          git checkout ${{ github.ref_name }}
+
+          # Adiciona o arquivo com o aluno do mês e faz o commit
+          echo "$top_aluno" >> aluno_do_mes.txt
+          git add aluno_do_mes.txt
+          git commit -m "$top_aluno" || echo "Nada novo pra commitar"
+          git push
